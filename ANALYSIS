@@ -1,0 +1,36 @@
+
+--List all customers who live in "Mumbai".
+select * from  ADDRESSES 
+where City='Mumbai'
+
+
+--Find all products with a price greater than 1000, sorted from most expensive to least.
+SELECT * FROM PRODUCTS 
+WHERE  Price>1000
+order by Price DESC
+
+
+--Display the current stock of each product from the Inventory table.
+SELECT  ProductID , QtyAvailable FROM INVENTORY 
+
+
+
+--List all orders placed in the last 30 days.
+SELECT *
+FROM Orders
+WHERE OrderDate >= DATEADD(DAY, -30, GETDATE());
+
+
+--Find all orders that have not yet been shipped.
+SELECT OrderID From OrderStatusHistory where Status='Pending'
+
+
+--Show the average rating for each product from the Reviews table.
+select AVG(Rating)  AS Average_Rating 
+from Reviews 
+Group by ProductID
+
+
+--Display the most recent status change for each order from OrderStatusHistory.
+select OrderID , Status 
+from OrderStatusHistory
