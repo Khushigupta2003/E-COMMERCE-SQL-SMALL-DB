@@ -1,1 +1,197 @@
 # E-COMMERCE-SQL-SMALL-DB
+-- Create Database
+CREATE DATABASE EcommerceDB;
+GO
+USE EcommerceDB;
+GO
+
+-- USERS
+CREATE TABLE Users (
+    UserID INT IDENTITY(1,1) PRIMARY KEY,
+    FirstName NVARCHAR(50) NOT NULL,
+    LastName NVARCHAR(50),
+    Email NVARCHAR(100) UNIQUE NOT NULL,
+    PasswordHash NVARCHAR(255) NOT NULL,
+    Phone NVARCHAR(20),
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    IsActive BIT DEFAULT 1
+);
+
+-- ADDRESSES
+CREATE TABLE Addresses (
+    AddressID INT IDENTITY(1,1) PRIMARY KEY,
+    UserID INT FOREIGN KEY REFERENCES Users(UserID) ON DELETE CASCADE,
+    Line1 NVARCHAR(255) NOT NULL,
+    Line2 NVARCHAR(255),
+    City NVARCHAR(100) NOT NULL,
+    State NVARCHAR(100),
+    PostalCode NVARCHAR(20),
+    Country NVARCHAR(50) DEFAULT 'India',
+    IsBilling BIT DEFAULT 0,
+    IsShipping BIT DEFAULT 1
+);
+
+-- CATEGORIES
+CREATE TABLE Categories (
+    CategoryID INT IDENTITY(1,1) PRIMARY KEY,
+    Name NVARCHAR(100) UNIQUE NOT NULL,
+    ParentID INT FOREIGN KEY REFERENCES Categories(CategoryID)
+);
+
+-- PRODUCTS
+CREATE TABLE Products (
+    ProductID INT IDENTITY(1,1) PRIMARY KEY,
+    SKU NVARCHAR(50) UNIQUE NOT NULL,
+    Name NVARCHAR(100) NOT NULL,
+    Description NVARCHAR(MAX),
+    Price DECIMAL(10,2) NOT NULL,
+    CategoryID INT FOREIGN KEY REFERENCES Categories(CategoryID),
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    IsActive BIT DEFAULT 1
+);
+
+-- PRODUCT IMAGES
+CREATE TABLE ProductImages (
+    ImageID INT IDENTITY(1,1) PRIMARY KEY,
+    ProductID INT FOREIGN KEY REFERENCES Products(ProductID) ON DELETE CASCADE,
+    Url NVARCHAR(255) NOT NULL,
+    AltText NVARCHAR(255),
+    Ordering INT DEFAULT 0
+);
+
+-- INVENTORY
+CREATE TABLE Inventory (
+    ProductID INT PRIMARY KEY FOREIGN KEY REFERENCES Products(ProductID) ON DELETE CASCADE,
+    QtyAvailable INT NOT NULL DEFAULT 0,
+    SafetyStock INT NOT NULL DEFAULT 5,
+    LastRestock DATETIME
+);
+
+-- SUPPLIERS
+CREATE TABLE Suppliers (
+    SupplierID INT IDENTITY(1,1) PRIMARY KEY,
+    Name NVARCHAR(100) NOT NULL,
+    ContactEmail NVARCHAR(100),
+    Phone NVARCHAR(20)
+);
+
+CREATE TABLE ProductSupplier (
+    ProductID INT FOREIGN KEY REFERENCES Products(ProductID) ON DELETE CASCADE,
+    SupplierID INT FOREIGN KEY REFERENCES Suppliers(SupplierID),
+    SupplierSKU NVARCHAR(50),
+    PRIMARY KEY (ProductID, SupplierID)
+);
+
+-- ORDERS
+CREATE TABLE Orders (
+    OrderID INT IDENTITY(1,1) PRIMARY KEY,
+    UserID INT FOREIGN KEY REFERENCES Users(UserID),
+    OrderDate DATETIME DEFAULT GETDATE(),
+    Status NVARCHAR(20) DEFAULT 'Pending', -- could use CHECK constraint
+    ShippingAddressID INT FOREIGN KEY REFERENCES Addresses(AddressID),
+    BillingAddressID INT FOREIGN KEY REFERENCES Addresses(AddressID),
+    Subtotal DECIMAL(12,2) NOT NULL,
+    ShippingFee DECIMAL(8,2) DEFAULT 0,
+    DiscountAmt DECIMAL(10,2) DEFAULT 0,
+    TaxAmt DECIMAL(10,2) DEFAULT 0,
+    TotalAmt DECIMAL(12,2) NOT NULL
+);
+
+-- ORDER ITEMS
+CREATE TABLE OrderItems (
+    OrderItemID INT IDENTITY(1,1) PRIMARY KEY,
+    OrderID INT FOREIGN KEY REFERENCES Orders(OrderID) ON DELETE CASCADE,
+    ProductID INT FOREIGN KEY REFERENCES Products(ProductID),
+    UnitPrice DECIMAL(10,2) NOT NULL,
+    Quantity INT NOT NULL,
+    LineTotal DECIMAL(12,2) NOT NULL
+);
+
+-- PAYMENTS
+CREATE TABLE Payments (
+    PaymentID INT IDENTITY(1,1) PRIMARY KEY,
+    UserID INT FOREIGN KEY REFERENCES Users(UserID),
+    PaidAt DATETIME DEFAULT GETDATE(),
+    Amount DECIMAL(12,2) NOT NULL,
+    Method NVARCHAR(50) NOT NULL,
+    ExternalRef NVARCHAR(100),
+    Status NVARCHAR(50) DEFAULT 'Completed'
+);
+
+-- COUPONS
+CREATE TABLE Coupons (
+    CouponCode NVARCHAR(50) PRIMARY KEY,
+    Description NVARCHAR(255),
+    DiscountPct DECIMAL(5,2),
+    DiscountAmt DECIMAL(10,2),
+    MinOrderAmt DECIMAL(12,2),
+    StartsAt DATETIME,
+    EndsAt DATETIME,
+    Active BIT DEFAULT 1
+);
+
+-- REVIEWS
+CREATE TABLE Reviews (
+    ReviewID INT IDENTITY(1,1) PRIMARY KEY,
+    ProductID INT FOREIGN KEY REFERENCES Products(ProductID) ON DELETE CASCADE,
+    UserID INT FOREIGN KEY REFERENCES Users(UserID),
+    Rating INT CHECK (Rating >= 1 AND Rating <= 5),
+    Title NVARCHAR(255),
+    Body NVARCHAR(MAX),
+    CreatedAt DATETIME DEFAULT GETDATE()
+);
+
+-- CART
+CREATE TABLE Carts (
+    CartID INT IDENTITY(1,1) PRIMARY KEY,
+    UserID INT UNIQUE FOREIGN KEY REFERENCES Users(UserID),
+    UpdatedAt DATETIME DEFAULT GETDATE()
+);
+
+CREATE TABLE CartItems (
+    CartItemID INT IDENTITY(1,1) PRIMARY KEY,
+    CartID INT FOREIGN KEY REFERENCES Carts(CartID) ON DELETE CASCADE,
+    ProductID INT FOREIGN KEY REFERENCES Products(ProductID),
+    Qty INT NOT NULL DEFAULT 1,
+    AddedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT UQ_Cart_Product UNIQUE (CartID, ProductID)
+);
+
+-- WISHLIST
+CREATE TABLE Wishlists (
+    WishlistID INT IDENTITY(1,1) PRIMARY KEY,
+    UserID INT FOREIGN KEY REFERENCES Users(UserID),
+    Name NVARCHAR(100) DEFAULT 'My Wishlist',
+    CreatedAt DATETIME DEFAULT GETDATE()
+);
+
+CREATE TABLE WishlistItems (
+    WishlistItemID INT IDENTITY(1,1) PRIMARY KEY,
+    WishlistID INT FOREIGN KEY REFERENCES Wishlists(WishlistID) ON DELETE CASCADE,
+    ProductID INT FOREIGN KEY REFERENCES Products(ProductID),
+    AddedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT UQ_Wishlist_Product UNIQUE (WishlistID, ProductID)
+);
+
+-- SHIPMENTS
+CREATE TABLE Shipments (
+    ShipmentID INT IDENTITY(1,1) PRIMARY KEY,
+    OrderID INT FOREIGN KEY REFERENCES Orders(OrderID),
+    ShippedAt DATETIME,
+    DeliveredAt DATETIME,
+    Carrier NVARCHAR(100),
+    TrackingNo NVARCHAR(100),
+    Status NVARCHAR(50)
+);
+
+-- ORDER STATUS HISTORY
+CREATE TABLE OrderStatusHistory (
+    HistoryID INT IDENTITY(1,1) PRIMARY KEY,
+    OrderID INT FOREIGN KEY REFERENCES Orders(OrderID) ON DELETE CASCADE,
+    Status NVARCHAR(20),
+    ChangedAt DATETIME DEFAULT GETDATE(),
+    ChangedBy NVARCHAR(100)
+);
+
+
+
